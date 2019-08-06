@@ -1,14 +1,13 @@
 package com.company;
 
 import java.io.*;
-import java.net.ServerSocket;
 import java.net.Socket;
 
 public class HttpServer implements Runnable {
 
-    private Socket newClient;
-    private sendFile s = new sendFile();
-    private getFileName g = new getFileName();
+    private final Socket newClient;
+    private SendTheFileRequested sendTheFileRequested = new SendTheFileRequested();
+    private ExtractFileName extractFileName = new ExtractFileName();
 
     public HttpServer(Socket clientSocket) {
         newClient = clientSocket;
@@ -16,30 +15,15 @@ public class HttpServer implements Runnable {
 
     @Override
     public void run() {
-        try {
-                s.sendFile(newClient, g.getFileName(newClient));
-        } finally {
-            try {
-                newClient.close();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+        try (newClient;
+             InputStreamReader br = (new InputStreamReader(newClient.getInputStream()));
+             DataOutputStream dos = new DataOutputStream(newClient.getOutputStream())
+        ) {
+            String fileName = extractFileName.extractFileName(br);
+            sendTheFileRequested.sendFile(dos, fileName);
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 
-    public static void main(String[] args) {
-        try {
-            ServerSocket serverSocket = new ServerSocket(8080);
-            System.out.println("Server Listening");
-
-            while (true) {
-                Socket socket = serverSocket.accept();
-                System.out.println("Connected to User");
-                Thread t = new Thread(new HttpServer(socket));
-                t.start();
-            }
-        } catch (IOException ex) {
-            ex.printStackTrace();
-        }
-    }
 }
